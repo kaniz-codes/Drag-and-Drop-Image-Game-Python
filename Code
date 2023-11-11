@@ -7,11 +7,48 @@ cap = cv2.VideoCapture(0)
 cap.set(3, 1280)
 cap.set(4, 720)
 
-detector = HandDetector(detectionCon = 0.65)
+detector = HandDetector(detectionCon = 0.8)
+
+class DragImg():
+    def __init__(self, path, posOrigin, imgType):
+        self.posOrigin = posOrigin
+        self.imgType = imgType
+        self.path = path
+
+        if self.imgType == 'png':
+            self.img = cv2.imread(self.path, cv2.IMREAD_UNCHANGED)
+        else:
+            self.img = cv2.imread(self.path)
+
+        self.size = self.img.shape[:2]
+
+    def update(self, cursor):
+        ox, oy = self.posOrigin
+        h, w = self.size
+        # check if region
+        if ox < cursor[0] < ox + w and oy < cursor[1] < oy + h:
+            self.posOrigin = cursor[0] - w // 2, cursor[1] - h // 2
 
 #img1 = cv2.imread("ImageJPG/1.jpg")
-img1 = cv2.imread("ImagePNG/1.PNG", cv2.IMREAD_UNCHANGED)
-ox, oy = 500, 200
+# img1 = cv2.imread("ImagePNG/1.PNG", cv2.IMREAD_UNCHANGED)
+# ox, oy = 500, 200
+
+path = "ImagePNG"
+myList = os.listdir(path)
+print(myList)
+
+listImg = []
+for x, pathImg in enumerate(myList):
+    if 'png' in pathImg:
+        imgType = 'png'
+        print('png')
+
+    else:
+        print('jpg')
+        imgType = 'jpg'
+    listImg.append(DragImg(f'{path}/{pathImg}', [50+x*100, 50], imgType))
+
+#print(len(listImg))
 
 while True:
     success, img = cap.read()
@@ -22,22 +59,25 @@ while True:
         lmList = hands[0]['lmList']
         # check if clicked
         length, info, img = detector.findDistance(lmList[8], lmList[12], img)
-        print(length)
+        #print(length)
         if length < 60:
             cursor = lmList[8]
-            #check if region
-            if ox < cursor[0] < ox + w and oy < cursor[1] < oy + h:
-                ox, oy = cursor[0] - w // 2, cursor[1] - h // 2
+            for imgObject in listImg:
+                imgObject.update(cursor)
+
 
     try:
-        # draw for JPG image
-        h, w, _ = img1.shape
-        # img[oy:oy+h, ox:ox+w] = img1
 
-        # draw for PNG image
-        img = cvzone.overlayPNG(img, img1, [ox, oy])
+        for imgObject in listImg:
+            # draw for JPG image
+            h, w = imgObject.size
+            ox, oy = imgObject.posOrigin
+            if imgObject.imgType == "png":
+                # draw for PNG image
+                img = cvzone.overlayPNG(img, imgObject.img, [ox, oy])
 
-
+            else:
+                img[oy:oy + h, ox:ox + w] = imgObject.img
     except:
         pass
 
